@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require('crypto');
 const Session = require('../models/Session');
 const User = require('../models/User');
+const logger = require('../config/logger');
 
 
 // Genera access token y refresh token
@@ -27,6 +28,7 @@ const loginUser = async (req, res) => {
     const user = await User.findOne({ username });
 
     if (!user || !(await user.matchPassword(password))) {
+      logger.audit(username || 'unknown', 'LOGIN', 'auth-api', 'FAILURE', { reason: 'Invalid credentials' });
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -35,7 +37,7 @@ const loginUser = async (req, res) => {
 
     // Definir la caducidad de la sesión (por ejemplo, 1 hora) en UTC
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
- 
+
     // Crear y guardar la sesión en la base de datos
     const session = new Session({
       sessionToken,
@@ -45,12 +47,15 @@ const loginUser = async (req, res) => {
 
     await Session.create(session);
 
+    logger.audit(user.username, 'LOGIN', 'auth-api', 'SUCCESS', { ip: req.ip });
+
     const { accessToken, refreshToken } = generateTokens(user._id, sessionToken);
     return res.status(200).json({
       token: accessToken,
       refreshToken
     });
   } catch (error) {
+    logger.error('Error in login', error.stack, { username });
     console.error(error);
     res.status(500).json({ error: "Server error" });
   }
@@ -68,6 +73,7 @@ const refreshTokenController = async (req, res) => {
     // Validar que la sesión exista y esté activa
     const session = await Session.findOne({ sessionToken: decoded.sessionToken, userId: decoded.userId, isActive: true });
     if (!session) {
+      logger.audit(decoded.userId || 'unknown', 'REFRESH_TOKEN', 'session', 'FAILURE', { reason: 'Session invalid/expired' });
       return res.status(401).json({ error: 'Refresh token inválido o sesión expirada' });
     }
     // Emitir nuevo access token
@@ -78,6 +84,7 @@ const refreshTokenController = async (req, res) => {
     );
     return res.status(200).json({ token: accessToken });
   } catch (error) {
+    logger.error('Error in refreshTokenController', error.stack);
     console.error('Error in logoutController:', error);
     return res.status(401).json({ error: 'Refresh token inválido o expirado' });
   }
@@ -103,8 +110,12 @@ const logoutController = async (req, res) => {
     if (!session) {
       return res.status(401).json({ error: 'Refresh token inválido o sesión ya cerrada' });
     }
+
+    logger.audit(decoded.userId, 'LOGOUT', 'session', 'SUCCESS', {});
+
     return res.status(200).json({ message: 'Sesión cerrada correctamente' });
   } catch (error) {
+    logger.error('Error in logoutController', error.stack);
     console.error('Error in logoutController:', error);
     return res.status(401).json({ error: 'Refresh token inválido o expirado' });
   }
