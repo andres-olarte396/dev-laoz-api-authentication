@@ -37,17 +37,17 @@ const loginLimiter = rateLimit({
 router.post(
 	'/login',
 	loginLimiter,
-		[
-			body('username').isString().notEmpty(),
-			body('password').isString().notEmpty(),
-		],
-		(req, res, next) => {
-			const errors = validationResult(req);
-			if (!errors.isEmpty()) {
-				return res.status(400).json({ error: 'Datos incompletos' });
-			}
-			next();
-		},
+	[
+		body('username').isString().notEmpty(),
+		body('password').isString().notEmpty(),
+	],
+	(req, res, next) => {
+		const errors = validationResult(req);
+		if (!errors.isEmpty()) {
+			return res.status(400).json({ error: 'Datos incompletos' });
+		}
+		next();
+	},
 	loginUser
 );
 
@@ -101,4 +101,10 @@ router.post('/refresh', refreshTokenController);
  */
 router.post('/logout', logoutController);
 
+// Healthcheck endpoint para Docker
+router.get('/health', (req, res) => {
+	res.status(200).json({ status: 'healthy', service: 'authentication-api' });
+});
+
 module.exports = router;
+
