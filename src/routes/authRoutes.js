@@ -101,6 +101,23 @@ router.post('/refresh', refreshTokenController);
  */
 router.post('/logout', logoutController);
 
+/**
+ * @swagger
+ * /api/auth/verify:
+ *   get:
+ *     summary: Verifica si un token es válido (Uso interno Nginx)
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token válido
+ *       401:
+ *         description: Token inválido
+ */
+const { verifyToken } = require('../controllers/authController');
+router.get('/verify', verifyToken);
+
 // Healthcheck endpoint para Docker
 router.get('/health', (req, res) => {
 	res.status(200).json({ status: 'healthy', service: 'authentication-api' });

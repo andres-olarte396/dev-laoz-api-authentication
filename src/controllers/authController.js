@@ -120,9 +120,38 @@ const logoutController = async (req, res) => {
     return res.status(401).json({ error: 'Refresh token inválido o expirado' });
   }
 };
+// Controlador para verificar token (para Nginx auth_request)
+const verifyToken = async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Opcional: Validar contra la sesión activa en DB para logout inmediato
+    const session = await Session.findOne({ sessionToken: decoded.sessionToken, userId: decoded.userId, isActive: true });
+    if (!session) {
+       return res.status(401).json({ error: 'Session revoked' });
+    }
+
+    // Retorna 200 OK si es válido, que es lo que Nginx espera
+    return res.status(200).json({ 
+        message: 'Token valid', 
+        userId: decoded.userId,
+        role: 'user' // Aquí se podría expandir RBAC buscando en User model
+    });
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
 
 module.exports = {
   loginUser,
   refreshTokenController,
   logoutController,
+  verifyToken
 };
