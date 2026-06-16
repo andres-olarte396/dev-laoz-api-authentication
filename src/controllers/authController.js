@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require('crypto');
 const Session = require('../models/Session');
 const User = require('../models/User');
-const logger = require('../config/logger');
+const { logger } = require('@dev-laoz/core');
 
 
 // Genera access token y refresh token
