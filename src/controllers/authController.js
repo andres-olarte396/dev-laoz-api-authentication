@@ -51,6 +51,7 @@ const loginUser = async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens(user._id, sessionToken);
     return res.status(200).json({
+      accessToken,
       token: accessToken,
       refreshToken
     });
